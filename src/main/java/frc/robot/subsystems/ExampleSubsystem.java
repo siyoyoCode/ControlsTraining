@@ -25,8 +25,8 @@ public class ExampleSubsystem extends SubsystemBase {
   private final CANSparkMax flyWheelMotor;
 
   //sensors
-  private final AnalogPotentiometer irBottom; //ir camera on the side
-  private final AnalogPotentiometer irTop; //ir camera on the side
+  private final AnalogPotentiometer irBottom; //ir camera on the bottom
+  private final AnalogPotentiometer irTop; //ir camera on the top
   private final ColorSensorV3 colorSensor; //color sensor
   
   //boleans
