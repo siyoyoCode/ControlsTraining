@@ -22,7 +22,7 @@ public class ExampleSubsystem extends SubsystemBase {
   //motors
   private final WPI_TalonSRX motorTop; 
   private final WPI_TalonSRX motorBottom;
-  private final CANSparkMax flyWheel;
+  private final CANSparkMax flyWheelMotor;
 
   //sensors
   private final AnalogPotentiometer irBottom; //ir camera on the side
@@ -30,7 +30,7 @@ public class ExampleSubsystem extends SubsystemBase {
   private final ColorSensorV3 colorSensor; //color sensor
   
   //boleans
-  private boolean spaceAtTop; //chekcs if there is a ball at top
+  private boolean spaceAtTop; //checks if there is a ball at very top of robot
   private boolean toLaunch; //launching sequence once controller button pressed
 
   //controllers
@@ -38,22 +38,24 @@ public class ExampleSubsystem extends SubsystemBase {
 
   /** Creates a new ExampleSubsystem. */
   public ExampleSubsystem() {
-    //motors
+    //initalizing motors
     motorTop = new WPI_TalonSRX(14);
     motorBottom = new WPI_TalonSRX(13);  
-    flyWheel = new CANSparkMax(15, MotorType.kBrushed);
+    flyWheelMotor = new CANSparkMax(15, MotorType.kBrushed);
+
+    //configs
     motorTop.configFactoryDefault();
     motorBottom.configFactoryDefault();
     
-    //sensors
+    //initalizing sensors
     irBottom = new AnalogPotentiometer(0); //IR sensor
     irTop = new AnalogPotentiometer(1);
     colorSensor = new ColorSensorV3(I2C.Port.kMXP); //color sensor
 
-    //controller and boolean
+    //initializing controller and boolean
     controller = new XboxController(0);
-    spaceAtTop = true;
-    toLaunch = false;
+    spaceAtTop = true; //with no balls at top of robot, space is automatically true
+    toLaunch = false; //button is not pressed, so automatically false
   }
 
   /**
@@ -82,46 +84,60 @@ public class ExampleSubsystem extends SubsystemBase {
 
   @Override
   public void periodic() {
-    System.out.println(irBottom.get());
-    //System.out.println("Hello");
-    double bottomBallTolerance = 0.08; //ideally 0.16
-    double topBallTolerance = 0.4; //further away means smaller
-    int middleBallTolerance = 9;  //add half of ball width, 1695-99(without)
+
+    //if ball under sensor, then sensor.get() outputs 0.08
+    double bottomIRSensorTolerance = 0.08;
+
+    //if ball in front of sensor, output is 0.4 
+    double topIRSensorTolerance = 0.4; 
+
+    //if ball in front of sensor, output is 9
+    int middleColorSensorTolerance = 9;  
 
     //checks if there is space above for the balls to travel up
-    if(irTop.get() > topBallTolerance){
+    //stops moving motors if ball is already at top
+    if(irTop.get() > topIRSensorTolerance){
       spaceAtTop = false;
-      motorBottom.set(0);
+
+      //resets all motor speeds
+      motorBottom.set(0); 
       motorTop.set(0);
-      flyWheel.set(0);
+      flyWheelMotor.set(0);
     }
 
-    //checks if there is a ball in 'waiting area' and if there is space for a ball to be rolled in
-    if(spaceAtTop && irBottom.get() >= bottomBallTolerance){
-        motorBottom.set(-0.2); //TEST SPEED
+    /*checks if there is a ball in 'waiting area' 
+    and if there is space for a ball to be rolled up*/
+    if(spaceAtTop && (irBottom.get() >= bottomIRSensorTolerance)){
+        motorBottom.set(-0.2); //sets bottom motor speed 
 
-        //checks if there is a ball that needs to move up before another can be rolled in
-        if(colorSensor.getProximity() > middleBallTolerance){
-          motorTop.set(-0.1);
+        /*checks if there is a ball aready in robot that needs to move up 
+        before another can be rolled in from waiting area*/
+        if(colorSensor.getProximity() > middleColorSensorTolerance){
+          motorTop.set(-0.2); //sets top motor speed
         }
-    } else { //resets 
+
+    } else { //resets all motors
       motorBottom.set(0);
       motorTop.set(0);
     }
 
-    //This method will be called once per scheduler run
-
+    //initates launching sequence if button is pressed
     if(controller.getAButtonPressed()){
       toLaunch = true;
     }
 
+    //launching sequence
     if(toLaunch){
-      if(irTop.get() < topBallTolerance){
+
+      /*checks if ball is not all the way at the top of robot
+      if not, moves it till sensor lies in empty space between two balls 
+      this ensures ball is high enough to be launched*/
+      if(irTop.get() > topIRSensorTolerance){
         motorTop.set(-0.3);
-      } else {
-        flyWheel.set(0.3);
-        motorTop.set(0);
-        toLaunch = false;
+      } else { //if a ball is already high enough, ball is launched 
+        flyWheelMotor.set(0.3);
+        motorTop.set(0); 
+        toLaunch = false; //launching sequence set to false
       }
     }
   }
